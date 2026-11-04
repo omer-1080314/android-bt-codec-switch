@@ -42,63 +42,52 @@ d8 --min-api 30 --output . out/Ldac990.class && mv classes.dex ldac990.dex
 ```
 
 ## Automate setup
-Import the community flow **[Bluetooth Codec Changer](https://llamalab.com/automate/community/flows/54031)** (open the link on the phone, or Automate → Community → search "Bluetooth Codec Changer"). The flow ships with two empty fields: the **device in block 2** and the **command in block 4**.
+Import the community flow **[Bluetooth Codec Changer (with mode choice)](https://llamalab.com/automate/community/flows/54032)**: open the link on the phone, or go to Automate → Community → "Bluetooth Codec Changer".
 
-Flow layout: wait for a connection, run the root command once connected, keep looping.
+The older basic version, **[flow 54031](https://llamalab.com/automate/community/flows/54031)**, has no choice dialog and always uses 1000 (990 kbps).
 
-1. **Flow beginning**: nothing to fill in. GO → block 2.
-2. **Bluetooth device connected?** *(empty field: Device)*: select your headphones, e.g. `WF-1000XM5`, or leave it at *any* device.
-   - **NO** → block 3.
-   - **YES** → block 4.
-3. **Delay**: 3 s, then back to block 2 (poll again).
-4. **Superuser command** *(empty field: Command)*: enter
+### Blocks (numbers as in the flow)
+1. **Flow beginning** → 5.
+5. **Set variable**: `mode` = `1000` (default) → 6.
+6. **Choice dialog** "Quality": choices `990 kbps`, `660 kbps`, `330 kbps`, `Adaptive` (in this order, *Sort* off), selected indices → `sel`.
+   - **YES** (choice made) → 7.
+   - **NO** (cancelled or timed out) → 2, keeping the default 1000.
+7. **Set variable**: `mode` = `1000 + sel[0]` → 2.
+   Dialog choice returns an **array of 0-based indices** ([docs](https://llamalab.com/automate/doc/block/dialog_choice.html)), so `sel[0]` is 0–3 and `mode` becomes 1000–1003.
+2. **When Bluetooth device connected?** *(field: Device)*: select your headphones (e.g. WF-1000XM5) or leave it at *any*.
+   - **NO** → 3.
+   - **YES** → 4.
+3. **Delay**: 3 s → 2.
+4. **Superuser shell command**:
    ```
-   CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990
+   CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}
    ```
-   Without an argument it falls back to `1000` (990 kbps). Alternatives: `... Ldac990 1001` or `sh /data/adb/ldac.sh 1000`.
-   **OK** → loops back to the IN of block 2 (or through the delay).
-
-### Optional: configurable mode
-**Option A: ask every time (Dialog choice).** Insert a **Dialog choice** block between block 2 (YES) and block 4:
-- *Choice titles*: `["990 kbps (quality)", "660 kbps (normal)", "330 kbps (connection)", "Best effort (adaptive)"]`
-- *Sort*: **off** (keeps the list in mode order)
-- *Selected indices*: variable `sel`
-
-Per the [Automate docs](https://llamalab.com/automate/doc/block/dialog_choice.html), the output is an **array of selected indices** (0-based), even for a single choice. So `sel` = `[0]`…`[3]`, not 1000–1003. Map it with a **Variable set** block, `mode` = `1000 + sel[0]`, and use block 4's command:
-```
-CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}
-```
-(Or skip the Variable set and use `{1000 + sel[0]}` directly in the command.)
-Connect the dialog's *Cancel* output back to block 2 (or straight to block 4 with no argument, for the 1000 default).
-
-**Option B: fixed mode (Variable set).** Right after *Flow beginning*, add a **Variable set** block: variable `mode`, value `1000` (or 1001–1003). Block 4 command:
-```
-CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}
-```
+   **OK** → 2. Without an argument, `Ldac990` falls back to 1000.
 
 ### Flowchart
 ```mermaid
 flowchart TD
-    A([Flow beginning]) --> B{Choose mode}
-    B -->|Option A| C["Dialog choice → sel<br/>Variable set mode = 1000 + sel[0]"]
-    B -->|Option B| D["Variable set mode = 1000"]
-    C --> E{BT device connected?}
-    D --> E
-    E -->|NO| F[Delay 3 s]
-    F --> E
-    E -->|YES| G["Superuser command<br/>CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}"]
-    G -->|OK| E
+    B1(["1 Flow beginning"]) --> B5["5 Set variable<br/>mode = 1000"]
+    B5 --> B6{"6 Choice dialog 'Quality'<br/>990 / 660 / 330 / Adaptive"}
+    B6 -->|YES| B7["7 Set variable<br/>mode = 1000 + sel[0]"]
+    B6 -->|"NO (keep 1000)"| B2
+    B7 --> B2{"2 When BT device connected?"}
+    B2 -->|NO| B3["3 Delay 3 s"]
+    B3 --> B2
+    B2 -->|YES| B4["4 Superuser shell command<br/>CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}"]
+    B4 -->|OK| B2
 ```
-With Option A, the dialog runs once per flow start. To keep block 4 identical for both options, store the dialog output in `sel` and add **Variable set** `mode` = `1000 + sel[0]` (Dialog choice returns a 0-based index array, not the value).
 
-### What to change in your existing flow
+### What to change in your existing flow (54031 → 54032)
 1. Install the files to `/data/adb/` (see *Install*) and delete the old `/data/local/tmp` copies.
-2. Option B: between *Flow beginning* and *BT device connected?*, add **Variable set** `mode` = `1000`.
-   Option A: add **Dialog choice** there instead (titles in mode order, *Sort* off, output `sel`), followed by **Variable set** `mode` = `1000 + sel[0]`.
-3. In *BT device connected?*, select your headphones (e.g. WF-1000XM5) or leave it at *any*.
-4. In *Superuser command*, set the command to `CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}`.
-5. Keep the loops as they are: NO → Delay 3 s → BT check, and OK → BT check.
-6. Make sure Automate has superuser access in KernelSU, then restart the flow.
+2. Between block 1 and block 2, add block 5 **Set variable** `mode` = `1000`.
+3. After block 5, add block 6 **Choice dialog** "Quality" (990 / 660 / 330 / Adaptive, *Sort* off, output `sel`).
+4. Connect block 6 YES → new block 7 **Set variable** `mode` = `1000 + sel[0]` → block 2.
+5. Connect block 6 NO → block 2, so the default 1000 is kept.
+6. In block 2, select your headphones or leave it at *any*.
+7. In block 4, set the command to `CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}`.
+8. Keep the loops: block 2 NO → block 3 (Delay 3 s) → block 2, and block 4 OK → block 2.
+9. Make sure Automate has superuser access in KernelSU, then restart the flow.
 
 **Superuser access:** grant Automate root in **KernelSU** (KernelSU Manager → Superuser → enable Automate). Otherwise block 4 fails. Then start the flow. For set-and-forget, enable *Run on system startup* in Automate settings.
 
