@@ -44,8 +44,6 @@ d8 --min-api 30 --output . out/Ldac990.class && mv classes.dex ldac990.dex
 ## Automate setup
 Import the community flow **[Bluetooth Codec Changer (with mode choice)](https://llamalab.com/automate/community/flows/54032)**: open the link on the phone, or go to Automate → Community → "Bluetooth Codec Changer".
 
-The older basic version, **[flow 54031](https://llamalab.com/automate/community/flows/54031)**, has no choice dialog and always uses 1000 (990 kbps).
-
 ### Blocks (numbers as in the flow)
 1. **Flow beginning** → 5.
 5. **Set variable**: `mode` = `1000` (default) → 6.
@@ -77,17 +75,6 @@ flowchart TD
     B2 -->|YES| B4["4 Superuser shell command<br/>CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}"]
     B4 -->|OK| B2
 ```
-
-### What to change in your existing flow (54031 → 54032)
-1. Install the files to `/data/adb/` (see *Install*) and delete the old `/data/local/tmp` copies.
-2. Between block 1 and block 2, add block 5 **Set variable** `mode` = `1000`.
-3. After block 5, add block 6 **Choice dialog** "Quality" (990 / 660 / 330 / Adaptive, *Sort* off, output `sel`).
-4. Connect block 6 YES → new block 7 **Set variable** `mode` = `1000 + sel[0]` → block 2.
-5. Connect block 6 NO → block 2, so the default 1000 is kept.
-6. In block 2, select your headphones or leave it at *any*.
-7. In block 4, set the command to `CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}`.
-8. Keep the loops: block 2 NO → block 3 (Delay 3 s) → block 2, and block 4 OK → block 2.
-9. Make sure Automate has superuser access in KernelSU, then restart the flow.
 
 **Superuser access:** grant Automate root in **KernelSU** (KernelSU Manager → Superuser → enable Automate). Otherwise block 4 fails. Then start the flow. For set-and-forget, enable *Run on system startup* in Automate settings.
 
