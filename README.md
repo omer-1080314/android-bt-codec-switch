@@ -79,8 +79,8 @@ CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}
 ```mermaid
 flowchart TD
     A([Flow beginning]) --> B{Choose mode}
-    B -->|Option A| C[Dialog choice → sel<br/>Variable set mode = 1000 + sel[0]]
-    B -->|Option B| D[Variable set mode = 1000]
+    B -->|Option A| C["Dialog choice → sel<br/>Variable set mode = 1000 + sel[0]"]
+    B -->|Option B| D["Variable set mode = 1000"]
     C --> E{BT device connected?}
     D --> E
     E -->|NO| F[Delay 3 s]
