@@ -41,21 +41,28 @@ d8 --min-api 30 --output . out/Ldac990.class && mv classes.dex ldac990.dex
 ```
 
 ## Automate setup
-Import the community flow: **[Bluetooth Codec Changer](https://llamalab.com/automate/community/flows/54031)** (Automate → Community → search "Bluetooth Codec Changer", or open the link on the phone). Some fields are intentionally left empty; fill them in:
+Import the community flow **[Bluetooth Codec Changer](https://llamalab.com/automate/community/flows/54031)** (open the link on the phone, or Automate → Community → search "Bluetooth Codec Changer"). The flow ships with two empty fields: the **device in block 2** and the **command in block 4**.
 
-1. **Flow beginning** – no settings.
-2. **Bluetooth device connected?** (trigger block) – set *Device* to your headset (pick it from the list, e.g. "WF-1000XM5"). Leave empty to react to any device.
-3. **Delay** (if present) – ~3–5 s, so A2DP has finished negotiating the codec before switching.
-4. **Shell command superuser** – set *Command* to:
+Flow layout: wait for a connection, run the root command once connected, keep looping.
+
+1. **Flow beginning**: nothing to fill in. GO → block 2.
+2. **Bluetooth device connected?** *(empty field: Device)*: select your headphones, e.g. `WF-1000XM5`, or leave it at *any* device.
+   - **NO** → block 3.
+   - **YES** → block 4.
+3. **Delay**: 3 s, then back to block 2 (poll again).
+4. **Superuser command** *(empty field: Command)*: enter
    ```
    sh /data/local/tmp/ldac.sh 1000
    ```
-   (or `CLASSPATH=/data/local/tmp/ldac990.dex app_process /system/bin Ldac990 1000`). Optionally store *Exit status* in a variable to log/notify on failure (non‑zero = see table above).
-5. Loop back to the trigger so it fires on every reconnect.
+   or call it directly:
+   ```
+   CLASSPATH=/data/local/tmp/ldac990.dex app_process /system/bin Ldac990 1000
+   ```
+   **OK** → loops back to the IN of block 2 (or through the delay).
 
-Start the flow, grant Automate the requested privileges (Bluetooth, superuser), and enable *Run on system startup* in Automate settings for set‑and‑forget.
+**Superuser access:** grant Automate root in **KernelSU** (KernelSU Manager → Superuser → enable Automate). Otherwise block 4 fails. Then start the flow. For set-and-forget, enable *Run on system startup* in Automate settings.
 
-> Note: Android may reset the LDAC mode when the headset reconnects; that's why the flow runs on every connection.
+> Android may reset the LDAC mode on reconnect, which is why the flow keeps looping.
 
 ## Disclaimer
 Use at your own risk. This only changes a runtime Bluetooth codec preference; nothing is written to system partitions.
