@@ -75,6 +75,30 @@ Connect the dialog's *Cancel* output back to block 2 (or straight to block 4 wit
 CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}
 ```
 
+### Flowchart
+```mermaid
+flowchart TD
+    A([Flow beginning]) --> B{Choose mode}
+    B -->|Option A| C[Dialog choice → sel<br/>Variable set mode = 1000 + sel[0]]
+    B -->|Option B| D[Variable set mode = 1000]
+    C --> E{BT device connected?}
+    D --> E
+    E -->|NO| F[Delay 3 s]
+    F --> E
+    E -->|YES| G["Superuser command<br/>CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}"]
+    G -->|OK| E
+```
+With Option A, the dialog runs once per flow start. To keep block 4 identical for both options, store the dialog output in `sel` and add **Variable set** `mode` = `1000 + sel[0]` (Dialog choice returns a 0-based index array, not the value).
+
+### What to change in your existing flow
+1. Install the files to `/data/adb/` (see *Install*) and delete the old `/data/local/tmp` copies.
+2. Option B: between *Flow beginning* and *BT device connected?*, add **Variable set** `mode` = `1000`.
+   Option A: add **Dialog choice** there instead (titles in mode order, *Sort* off, output `sel`), followed by **Variable set** `mode` = `1000 + sel[0]`.
+3. In *BT device connected?*, select your headphones (e.g. WF-1000XM5) or leave it at *any*.
+4. In *Superuser command*, set the command to `CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}`.
+5. Keep the loops as they are: NO → Delay 3 s → BT check, and OK → BT check.
+6. Make sure Automate has superuser access in KernelSU, then restart the flow.
+
 **Superuser access:** grant Automate root in **KernelSU** (KernelSU Manager → Superuser → enable Automate). Otherwise block 4 fails. Then start the flow. For set-and-forget, enable *Run on system startup* in Automate settings.
 
 > Android may reset the LDAC mode on reconnect, which is why the flow keeps looping.
