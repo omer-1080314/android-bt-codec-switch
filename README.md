@@ -25,13 +25,14 @@ Exit codes: `0` changed, `1` no LDAC device connected, `2` error, `3` profile pr
 - Headset connected over LDAC (enable LDAC in the headset's companion app, e.g. Sony Sound Connect → "Prioritize sound quality").
 
 ## Install
+`/data/adb` is root-only and survives reboots; you can't `adb push` there directly, so push to `/sdcard` first:
 ```sh
-adb push ldac990.dex /data/local/tmp/
-adb push ldac.sh /data/local/tmp/
-adb shell su -c 'chmod 644 /data/local/tmp/ldac990.dex; chmod 755 /data/local/tmp/ldac.sh'
-# test (headset connected):
-adb shell su -c 'sh /data/local/tmp/ldac.sh 1000'
+adb push ldac990.dex ldac.sh /sdcard/
+adb shell su -c 'cp /sdcard/ldac990.dex /sdcard/ldac.sh /data/adb/ && chmod 644 /data/adb/ldac990.dex && chmod 755 /data/adb/ldac.sh && rm /sdcard/ldac990.dex /sdcard/ldac.sh'
+# test (headset connected); no argument = 1000 (990 kbps):
+adb shell su -c 'CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990'
 ```
+`ldac.sh` accepts an optional mode (default `1000`) and rejects anything outside 1000–1003 (exit 64).
 Then check Developer options → *Bluetooth audio LDAC codec*: it should show *Optimized for audio quality*.
 
 ### Build the dex yourself (optional)
@@ -52,13 +53,27 @@ Flow layout: wait for a connection, run the root command once connected, keep lo
 3. **Delay**: 3 s, then back to block 2 (poll again).
 4. **Superuser command** *(empty field: Command)*: enter
    ```
-   sh /data/local/tmp/ldac.sh 1000
+   CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990
    ```
-   or call it directly:
-   ```
-   CLASSPATH=/data/local/tmp/ldac990.dex app_process /system/bin Ldac990 1000
-   ```
+   Without an argument it falls back to `1000` (990 kbps). Alternatives: `... Ldac990 1001` or `sh /data/adb/ldac.sh 1000`.
    **OK** → loops back to the IN of block 2 (or through the delay).
+
+### Optional: configurable mode
+**Option A: ask every time (Dialog choice).** Insert a **Dialog choice** block between block 2 (YES) and block 4:
+- *Choice titles*: `["990 kbps (quality)", "660 kbps (normal)", "330 kbps (connection)", "Best effort (adaptive)"]`
+- *Sort*: **off** (keeps the list in mode order)
+- *Selected indices*: variable `mode`
+
+Per the [Automate docs](https://llamalab.com/automate/doc/block/dialog_choice.html), the output is an **array of selected indices** (0-based), even for a single choice. So `mode` = `[0]`…`[3]`, not 1000–1003. Map it in block 4's command:
+```
+CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {1000 + mode[0]}
+```
+Connect the dialog's *Cancel* output back to block 2 (or straight to block 4 with no argument, for the 1000 default).
+
+**Option B: fixed mode (Variable set).** Right after *Flow beginning*, add a **Variable set** block: variable `mode`, value `1000` (or 1001–1003). Block 4 command:
+```
+CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}
+```
 
 **Superuser access:** grant Automate root in **KernelSU** (KernelSU Manager → Superuser → enable Automate). Otherwise block 4 fails. Then start the flow. For set-and-forget, enable *Run on system startup* in Automate settings.
 
