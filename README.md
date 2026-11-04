@@ -62,12 +62,13 @@ Flow layout: wait for a connection, run the root command once connected, keep lo
 **Option A: ask every time (Dialog choice).** Insert a **Dialog choice** block between block 2 (YES) and block 4:
 - *Choice titles*: `["990 kbps (quality)", "660 kbps (normal)", "330 kbps (connection)", "Best effort (adaptive)"]`
 - *Sort*: **off** (keeps the list in mode order)
-- *Selected indices*: variable `mode`
+- *Selected indices*: variable `sel`
 
-Per the [Automate docs](https://llamalab.com/automate/doc/block/dialog_choice.html), the output is an **array of selected indices** (0-based), even for a single choice. So `mode` = `[0]`…`[3]`, not 1000–1003. Map it in block 4's command:
+Per the [Automate docs](https://llamalab.com/automate/doc/block/dialog_choice.html), the output is an **array of selected indices** (0-based), even for a single choice. So `sel` = `[0]`…`[3]`, not 1000–1003. Map it with a **Variable set** block, `mode` = `1000 + sel[0]`, and use block 4's command:
 ```
-CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {1000 + mode[0]}
+CLASSPATH=/data/adb/ldac990.dex app_process /system/bin Ldac990 {mode}
 ```
+(Or skip the Variable set and use `{1000 + sel[0]}` directly in the command.)
 Connect the dialog's *Cancel* output back to block 2 (or straight to block 4 with no argument, for the 1000 default).
 
 **Option B: fixed mode (Variable set).** Right after *Flow beginning*, add a **Variable set** block: variable `mode`, value `1000` (or 1001–1003). Block 4 command:
